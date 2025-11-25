@@ -1,63 +1,62 @@
 import streamlit as st
+import pandas as pd
 from datetime import datetime
 import requests
 
 # ==========================================
-# 1. 核心設定 (修正配色問題)
+# 1. 核心設定 & 成員名單
 # ==========================================
 st.set_page_config(page_title="首爾行 2024", page_icon="🇰🇷", layout="centered")
 
-# CSS: 強制使用高對比配色 (白底黑字)
+# 成員名單
+MEMBERS = ["ChiYeh", "Olivia", "Yue", "May"]
+
+# 初始化分帳資料庫
+if 'expenses' not in st.session_state:
+    st.session_state.expenses = []
+
+# ==========================================
+# 2. CSS 樣式 (高對比配色：白底黑字)
+# ==========================================
 st.markdown("""
     <style>
-    /* 1. 強制應用程式背景為白色 */
-    .stApp {
-        background-color: #FFFFFF !important;
-    }
+    /* 強制背景白、文字黑 */
+    .stApp { background-color: #FFFFFF !important; }
+    h1, h2, h3, p, div, span, li, .stMarkdown, label { color: #000000 !important; }
     
-    /* 2. 強制所有主要文字為深黑色 */
-    h1, h2, h3, p, div, span, li, .stMarkdown {
+    /* 輸入框與選單文字顏色修正 */
+    .stTextInput input, .stNumberInput input, .stSelectbox div, .stMultiSelect div {
         color: #000000 !important;
+        background-color: #F0F2F6 !important; /* 淺灰底讓輸入框明顯一點 */
     }
     
-    /* 3. 卡片區塊樣式：加上淺灰邊框，背景微白，確保文字清楚 */
-    div[data-testid="stExpander"], div[data-testid="stVerticalBlock"] > div {
-        background-color: #FFFFFF;
-        border-radius: 8px;
-    }
-
-    /* 4. Tab 分頁標籤文字修正 */
-    .stTabs [data-baseweb="tab"] {
-        color: #000000 !important;
-    }
-    
-    /* 5. 按鈕維持高對比藍底白字 */
+    /* 按鈕樣式 */
     div.stButton > button {
         background-color: #007AFF !important;
         color: #FFFFFF !important;
+        border-radius: 8px;
         border: none;
         font-weight: bold;
-        border-radius: 8px;
     }
     
-    /* 6. 修正 Metric 指標卡 (倒數天數那邊) */
-    [data-testid="stMetricLabel"], [data-testid="stMetricValue"], [data-testid="stMetricDelta"] {
-        color: #000000 !important;
-    }
+    /* 數據指標卡 */
+    [data-testid="stMetricLabel"], [data-testid="stMetricValue"] { color: #000000 !important; }
+    
+    /* 表格樣式 */
+    [data-testid="stDataFrame"] { border: 1px solid #ddd; }
     </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. 功能函式庫
+# 3. 功能函式庫
 # ==========================================
 
-# Apple Maps 連結
 def get_apple_maps_link(lat, lon, name):
     return f"https://maps.apple.com/?q={name}&ll={lat},{lon}"
 
-# 取得天氣 (API)
 def get_weather():
     try:
+        # 抓取 12/5 - 12/7 首爾天氣
         url = "https://api.open-meteo.com/v1/forecast?latitude=37.5665&longitude=126.9780&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=Asia%2FTokyo&start_date=2025-12-05&end_date=2025-12-07"
         r = requests.get(url).json()
         return r['daily']
@@ -72,14 +71,8 @@ def weather_icon(code):
     return "🌤️"
 
 # ==========================================
-# 3. 行程資料
+# 4. 行程資料
 # ==========================================
-backup_plans = [
-    {"name": "Coex 星空圖書館", "desc": "室內雨天備案", "loc": "Coex Mall"},
-    {"name": "漢南洞逛街", "desc": "設計師品牌集中地", "loc": "Hannam-dong"},
-    {"name": "樂天超市 (首爾站)", "desc": "買零食伴手禮", "loc": "Lotte Mart Seoul Station"}
-]
-
 itinerary = {
     "12/5 (Day 1)": [
         {"time": "15:00", "title": "✈️ 抵達/Check-in", "desc": "機場快線 -> 弘大飯店", "transport": "AREX 機場快線", "lat": 37.5575, "lon": 126.9245, "loc": "Hongik Univ. Station"},
@@ -100,21 +93,19 @@ itinerary = {
     ]
 }
 
+backup_plans = [
+    {"name": "Coex 星空圖書館", "desc": "室內雨天備案"},
+    {"name": "漢南洞逛街", "desc": "設計師品牌"},
+    {"name": "樂天超市 (首爾站)", "desc": "伴手禮採買"}
+]
+
 # ==========================================
-# 4. App 介面
+# 5. App 主介面
 # ==========================================
 
-st.title("🇰🇷 首爾旅遊助手")
+st.title("🇰🇷 首爾行 2024")
 
-# --- 資訊摘要 ---
-today = datetime.now()
-trip_start = datetime(2025, 12, 5)
-days_left = (trip_start - today).days
-
-st.info(f"📅 今天是：{today.strftime('%m/%d')}｜距離出發還有 **{days_left}** 天")
-
-# --- 天氣 ---
-st.subheader("🌦 預報")
+# 天氣區塊
 weather_data = get_weather()
 if weather_data:
     cols = st.columns(3)
@@ -126,41 +117,91 @@ if weather_data:
             max_t = weather_data['temperature_2m_max'][i]
             st.metric(label=dates[i], value=f"{weather_icon(code)}", delta=f"{min_t}°-{max_t}°")
 else:
-    st.warning("暫時無法取得天氣")
+    st.caption("無法取得天氣資料")
 
 st.markdown("---")
 
-# --- 行程 ---
-st.subheader("📍 每日行程")
-st.caption("點擊按鈕可直接開啟 Apple Maps")
+# 建立分頁：行程 + 分帳
+tab1, tab2, tab3, tab_money, tab_backup = st.tabs(["D1", "D2", "D3", "💰 分帳", "備案"])
 
-tab1, tab2, tab3, tab4 = st.tabs(["Day 1", "Day 2", "Day 3", "備案"])
-
+# --- 行程分頁函數 ---
 def show_day(day):
     for item in itinerary[day]:
         with st.container():
-            # 簡單乾淨的排版
-            st.markdown(f"### {item['time']} {item['title']}")
+            st.markdown(f"**{item['time']} {item['title']}**")
             st.markdown(f"📝 {item['desc']}")
-            st.markdown(f"🚇 **{item['transport']}**")
-            
-            # 導航按鈕
+            st.markdown(f"🚇 {item['transport']}")
             map_url = get_apple_maps_link(item['lat'], item['lon'], item['loc'])
-            st.link_button("🗺️ 開啟導航 (Apple Maps)", map_url)
-            st.markdown("---")
+            st.link_button("📍 Apple Maps", map_url)
+            st.divider()
 
 with tab1: show_day("12/5 (Day 1)")
 with tab2: show_day("12/6 (Day 2)")
 with tab3: show_day("12/7 (Day 3)")
 
-with tab4:
+# --- 💰 分帳功能分頁 ---
+with tab_money:
+    st.subheader("💸 旅費計算機")
+    
+    # 新增消費表單
+    with st.expander("➕ 新增一筆消費", expanded=True):
+        with st.form("expense_form"):
+            col1, col2 = st.columns(2)
+            item = col1.text_input("消費項目", placeholder="ex. 烤肉")
+            amount = col2.number_input("金額 (KRW)", min_value=0, step=1000)
+            
+            payer = st.selectbox("誰先付錢？", MEMBERS)
+            sharers = st.multiselect("誰要分擔？", MEMBERS, default=MEMBERS)
+            
+            submitted = st.form_submit_button("記帳")
+            
+            if submitted and amount > 0 and sharers:
+                per_person = amount / len(sharers)
+                st.session_state.expenses.append({
+                    "項目": item,
+                    "總金額": amount,
+                    "付款人": payer,
+                    "分擔人": ", ".join(sharers),
+                    "每人應付": int(per_person)
+                })
+                st.success(f"已新增：{item}")
+
+    # 顯示帳目
+    if st.session_state.expenses:
+        st.markdown("### 🧾 消費明細")
+        df = pd.DataFrame(st.session_state.expenses)
+        
+        # 顯示簡易表格
+        st.dataframe(
+            df[["項目", "總金額", "付款人", "每人應付"]], 
+            use_container_width=True,
+            hide_index=True
+        )
+        
+        # 統計資訊
+        total_spent = df["總金額"].sum()
+        st.metric("目前總開銷 (KRW)", f"₩{total_spent:,}")
+        
+        # 簡單計算誰先墊了多少
+        st.markdown("#### 🏆 誰先墊了多少錢？")
+        paid_stats = df.groupby("付款人")["總金額"].sum()
+        st.bar_chart(paid_stats)
+
+        # 清除按鈕
+        if st.button("🗑 清除所有帳目"):
+            st.session_state.expenses = []
+            st.rerun()
+    else:
+        st.info("目前還沒有記帳喔！")
+
+# --- 備案分頁 ---
+with tab_backup:
     for plan in backup_plans:
         st.markdown(f"**{plan['name']}**")
-        st.write(plan['desc'])
-        st.markdown("---")
+        st.caption(plan['desc'])
+        st.divider()
 
-# --- 緊急資訊 ---
-with st.expander("🆘 緊急聯絡"):
-    st.write("**報警**：112")
-    st.write("**急救**：119")
-    st.write("**外交部緊急聯絡**：+82-10-9080-2761")
+# 底部緊急資訊
+with st.expander("🆘 緊急資訊"):
+    st.write("報警: 112 | 急救: 119")
+    st.write("外交部: +82-10-9080-2761")
