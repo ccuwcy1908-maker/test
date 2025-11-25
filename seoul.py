@@ -16,34 +16,55 @@ if 'expenses' not in st.session_state:
     st.session_state.expenses = []
 
 # ==========================================
-# 2. CSS 樣式 (高對比配色：白底黑字)
+# 2. CSS 樣式 (深色模式 Dark Mode)
 # ==========================================
 st.markdown("""
     <style>
-    /* 強制背景白、文字黑 */
-    .stApp { background-color: #FFFFFF !important; }
-    h1, h2, h3, p, div, span, li, .stMarkdown, label { color: #000000 !important; }
-    
-    /* 輸入框與選單文字顏色修正 */
-    .stTextInput input, .stNumberInput input, .stSelectbox div, .stMultiSelect div {
-        color: #000000 !important;
-        background-color: #F0F2F6 !important; /* 淺灰底讓輸入框明顯一點 */
+    /* 1. 全局背景：純黑 */
+    .stApp {
+        background-color: #000000 !important;
     }
     
-    /* 按鈕樣式 */
-    div.stButton > button {
-        background-color: #007AFF !important;
+    /* 2. 文字顏色：純白 */
+    h1, h2, h3, p, div, span, li, .stMarkdown, label {
         color: #FFFFFF !important;
+    }
+    
+    /* 3. 卡片區塊：深灰色 (iOS Dark Mode 風格) */
+    div[data-testid="stExpander"], div[data-testid="stVerticalBlock"] > div {
+        background-color: #1C1C1E;
+        border-radius: 12px;
+        border: none;
+    }
+    
+    /* 4. 輸入框優化：深灰底、白字 */
+    .stTextInput input, .stNumberInput input, .stSelectbox div, .stMultiSelect div {
+        color: #FFFFFF !important;
+        background-color: #2C2C2E !important; 
         border-radius: 8px;
+    }
+    
+    /* 5. Tab 分頁標籤 */
+    .stTabs [data-baseweb="tab-list"] { background-color: #000000; }
+    .stTabs [data-baseweb="tab"] {
+        color: #FFFFFF !important;
+        background-color: #1C1C1E;
+        margin-right: 5px;
+        border-radius: 8px;
+    }
+    
+    /* 6. 按鈕：iOS 藍色，更亮一點 */
+    div.stButton > button {
+        background-color: #0A84FF !important;
+        color: #FFFFFF !important;
+        border-radius: 10px;
         border: none;
         font-weight: bold;
     }
-    
-    /* 數據指標卡 */
-    [data-testid="stMetricLabel"], [data-testid="stMetricValue"] { color: #000000 !important; }
-    
-    /* 表格樣式 */
-    [data-testid="stDataFrame"] { border: 1px solid #ddd; }
+
+    /* 7. 數據指標 (Metric) 文字修正 */
+    [data-testid="stMetricLabel"] { color: #A1A1A6 !important; } /* 標題淺灰 */
+    [data-testid="stMetricValue"] { color: #FFFFFF !important; } /* 數值白 */
     </style>
 """, unsafe_allow_html=True)
 
@@ -64,10 +85,10 @@ def get_weather():
         return None
 
 def weather_icon(code):
-    if code <= 3: return "☀️"
-    if code <= 48: return "☁️"
-    if code <= 67: return "🌧️"
-    if code <= 77: return "❄️"
+    if code <= 3: return "☀️ 晴"
+    if code <= 48: return "☁️ 陰"
+    if code <= 67: return "🌧️ 雨"
+    if code <= 77: return "❄️ 雪"
     return "🌤️"
 
 # ==========================================
@@ -105,24 +126,40 @@ backup_plans = [
 
 st.title("🇰🇷 首爾行 2024")
 
-# 天氣區塊
+# --- 天氣區塊 (修正顯示方式) ---
 weather_data = get_weather()
+
 if weather_data:
+    st.markdown("### 🌦 首爾天氣預報")
+    # 使用 Container 模擬卡片
     cols = st.columns(3)
-    dates = ["12/5", "12/6", "12/7"]
+    dates = ["12/5 (四)", "12/6 (五)", "12/7 (六)"]
+    
     for i in range(3):
         with cols[i]:
-            code = weather_data['weather_code'][i]
-            min_t = weather_data['temperature_2m_min'][i]
-            max_t = weather_data['temperature_2m_max'][i]
-            st.metric(label=dates[i], value=f"{weather_icon(code)}", delta=f"{min_t}°-{max_t}°")
+            with st.container():
+                code = weather_data['weather_code'][i]
+                min_t = weather_data['temperature_2m_min'][i]
+                max_t = weather_data['temperature_2m_max'][i]
+                
+                # HTML 自定義顯示：紅字標示高溫，藍字標示低溫
+                st.markdown(f"""
+                <div style="text-align: center; background-color: #1C1C1E; padding: 10px; border-radius: 10px;">
+                    <div style="font-weight:bold; margin-bottom:5px;">{dates[i]}</div>
+                    <div style="font-size: 24px;">{weather_icon(code)}</div>
+                    <div style="margin-top: 5px;">
+                        <span style="color: #FF453A;">🔺 {max_t}°</span><br>
+                        <span style="color: #30D158;">🔻 {min_t}°</span>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
 else:
     st.caption("無法取得天氣資料")
 
 st.markdown("---")
 
-# 建立分頁：行程 + 分帳
-tab1, tab2, tab3, tab_money, tab_backup = st.tabs(["D1", "D2", "D3", "💰 分帳", "備案"])
+# 建立分頁
+tab1, tab2, tab3, tab_money, tab_backup = st.tabs(["Day 1", "Day 2", "Day 3", "💰 分帳", "備案"])
 
 # --- 行程分頁函數 ---
 def show_day(day):
@@ -132,28 +169,27 @@ def show_day(day):
             st.markdown(f"📝 {item['desc']}")
             st.markdown(f"🚇 {item['transport']}")
             map_url = get_apple_maps_link(item['lat'], item['lon'], item['loc'])
-            st.link_button("📍 Apple Maps", map_url)
+            st.link_button("📍 Apple Maps 導航", map_url)
             st.divider()
 
 with tab1: show_day("12/5 (Day 1)")
 with tab2: show_day("12/6 (Day 2)")
 with tab3: show_day("12/7 (Day 3)")
 
-# --- 💰 分帳功能分頁 ---
+# --- 💰 分帳功能 ---
 with tab_money:
     st.subheader("💸 旅費計算機")
     
-    # 新增消費表單
-    with st.expander("➕ 新增一筆消費", expanded=True):
+    with st.expander("➕ 新增消費 (點擊展開)", expanded=True):
         with st.form("expense_form"):
             col1, col2 = st.columns(2)
-            item = col1.text_input("消費項目", placeholder="ex. 烤肉")
+            item = col1.text_input("項目", placeholder="ex. 烤肉")
             amount = col2.number_input("金額 (KRW)", min_value=0, step=1000)
             
-            payer = st.selectbox("誰先付錢？", MEMBERS)
-            sharers = st.multiselect("誰要分擔？", MEMBERS, default=MEMBERS)
+            payer = st.selectbox("付款人", MEMBERS)
+            sharers = st.multiselect("分擔人", MEMBERS, default=MEMBERS)
             
-            submitted = st.form_submit_button("記帳")
+            submitted = st.form_submit_button("新增")
             
             if submitted and amount > 0 and sharers:
                 per_person = amount / len(sharers)
@@ -166,42 +202,37 @@ with tab_money:
                 })
                 st.success(f"已新增：{item}")
 
-    # 顯示帳目
     if st.session_state.expenses:
         st.markdown("### 🧾 消費明細")
         df = pd.DataFrame(st.session_state.expenses)
         
-        # 顯示簡易表格
         st.dataframe(
             df[["項目", "總金額", "付款人", "每人應付"]], 
             use_container_width=True,
             hide_index=True
         )
         
-        # 統計資訊
         total_spent = df["總金額"].sum()
-        st.metric("目前總開銷 (KRW)", f"₩{total_spent:,}")
+        st.info(f"💰 目前總開銷：₩{total_spent:,}")
         
-        # 簡單計算誰先墊了多少
         st.markdown("#### 🏆 誰先墊了多少錢？")
         paid_stats = df.groupby("付款人")["總金額"].sum()
-        st.bar_chart(paid_stats)
+        st.bar_chart(paid_stats, color="#0A84FF") # 藍色圖表
 
-        # 清除按鈕
         if st.button("🗑 清除所有帳目"):
             st.session_state.expenses = []
             st.rerun()
     else:
-        st.info("目前還沒有記帳喔！")
+        st.info("目前沒有記帳資料")
 
-# --- 備案分頁 ---
+# --- 備案 ---
 with tab_backup:
     for plan in backup_plans:
-        st.markdown(f"**{plan['name']}**")
+        st.markdown(f"**📍 {plan['name']}**")
         st.caption(plan['desc'])
         st.divider()
 
-# 底部緊急資訊
+# 底部
 with st.expander("🆘 緊急資訊"):
     st.write("報警: 112 | 急救: 119")
     st.write("外交部: +82-10-9080-2761")
