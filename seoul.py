@@ -11,7 +11,7 @@ import urllib.parse
 st.set_page_config(page_title="2025 首爾行", page_icon="🇰🇷", layout="centered")
 
 # ==========================================
-# 2. iOS 風格極致 CSS (還原截圖)
+# 2. iOS 風格極致 CSS
 # ==========================================
 st.markdown("""
     <style>
@@ -122,7 +122,8 @@ def get_naver_map_link(k_name, name):
 @st.cache_data(ttl=3600)
 def get_hourly_weather():
     try:
-        url = "https://api.open-meteo.com/v1/forecast?latitude=37.5665&longitude=126.9780&hourly=temperature_2m&timezone=Asia%2FTokyo&start_date=2025-12-05&end_date=2025-12-05"
+        # 這裡改成一次抓 3 天 (12/05 - 12/07)
+        url = "https://api.open-meteo.com/v1/forecast?latitude=37.5665&longitude=126.9780&hourly=temperature_2m&timezone=Asia%2FTokyo&start_date=2025-12-05&end_date=2025-12-07"
         r = requests.get(url).json()
         hourly = r['hourly']
         df = pd.DataFrame({
@@ -133,54 +134,65 @@ def get_hourly_weather():
     except:
         return None
 
-def plot_weather_chart(df):
+def plot_weather_chart(df, target_date_str):
+    # 根據傳入的日期字串 (YYYY-MM-DD) 篩選資料
+    target_date = pd.to_datetime(target_date_str).date()
+    day_df = df[df['time'].dt.date == target_date].copy()
+    
     # 篩選 08:00 - 23:00
-    day_df = df[(df['time'].dt.hour >= 8) & (df['time'].dt.hour <= 23)]
+    day_df = day_df[(day_df['time'].dt.hour >= 8) & (day_df['time'].dt.hour <= 23)]
+    
+    if day_df.empty:
+        return None
     
     fig = go.Figure()
     fig.add_trace(go.Scatter(
         x=day_df['time'], 
         y=day_df['temp'],
-        mode='lines+text', # 加入 text 模式
-        text=[f"{t:.0f}°" for t in day_df['temp']], # 顯示數值 (整數 + 度)
-        textposition="top center", # 數字顯示在線條上方
-        textfont=dict(color='white', size=12, family="Arial"), # 白色字體
+        mode='lines+text', 
+        text=[f"{t:.0f}°" for t in day_df['temp']], 
+        textposition="top center", 
+        textfont=dict(color='white', size=12, family="Arial"),
         line=dict(color='#0A84FF', width=3), 
         fill='tozeroy',
         fillcolor='rgba(10, 132, 255, 0.1)', 
         hoverinfo='y'
     ))
 
-    # 計算 Y 軸範圍，確保文字不會被切掉
+    # 計算 Y 軸範圍
     min_temp = day_df['temp'].min()
     max_temp = day_df['temp'].max()
 
+    # 格式化標題日期 MM-DD
+    title_date = target_date.strftime("%m-%d")
+
     fig.update_layout(
-        title=dict(text="🌤 12-05 氣溫走勢", font=dict(color="white", size=14)),
+        title=dict(text=f"🌤 {title_date} 氣溫走勢", font=dict(color="white", size=14)),
         paper_bgcolor='#1C1C1E', 
         plot_bgcolor='#1C1C1E',
-        margin=dict(l=20, r=20, t=50, b=20), # 上方留白多一點給文字
+        margin=dict(l=20, r=20, t=50, b=20),
         height=200,
         showlegend=False,
         xaxis=dict(
             showgrid=False, 
-            tickformat='%H', # 只顯示小時
+            tickformat='%H', 
             tickfont=dict(color='#8E8E93', size=10),
-            dtick=10800000.0 # 每3小時顯示一次刻度
+            dtick=10800000.0 
         ),
         yaxis=dict(
             showgrid=False, 
             visible=False, 
-            range=[min_temp - 2, max_temp + 5] # 預留上方空間給文字
+            range=[min_temp - 2, max_temp + 5]
         )
     )
     return fig
 
 # ==========================================
-# 4. 行程資料
+# 4. 行程資料 (加入日期欄位)
 # ==========================================
 itinerary = {
     "12/5 (Day 1)": {
+        "date": "2025-12-05",
         "items": [
             {
                 "time": "15:00", "title": "抵達/Check-in", "icon": "✈️",
@@ -200,6 +212,7 @@ itinerary = {
         ]
     },
     "12/6 (Day 2)": {
+        "date": "2025-12-06",
         "items": [
             {"time": "11:00", "title": "馬場洞韓牛", "icon": "🥩", "desc": "頂級 1++ 韓牛，推薦龍門家。", "transport": "馬場站", "k_name": "마장축산물시장", "loc": "Majang Meat Market"},
             {"time": "15:30", "title": "龍山 I’Park", "icon": "🛍", "desc": "超大購物中心，有龍貓展。", "transport": "龍山站", "k_name": "용산 아이파크몰", "loc": "I'Park Mall"},
@@ -208,6 +221,7 @@ itinerary = {
         ]
     },
     "12/7 (Day 3)": {
+        "date": "2025-12-07",
         "items": [
             {"time": "10:30", "title": "金豬食堂", "icon": "🐷", "desc": "米其林推薦 (需排隊)。", "transport": "藥水站", "k_name": "금돼지식당", "loc": "Gold Pig Dining"},
             {"time": "13:30", "title": "明洞商圈", "icon": "🛍", "desc": "Olive Young、明洞聖堂。", "transport": "明洞站", "k_name": "명동거리", "loc": "Myeongdong Street"},
@@ -220,7 +234,7 @@ itinerary = {
 # 5. App 主介面邏輯
 # ==========================================
 
-# 1. Header
+# Header
 col_h1, col_h2 = st.columns([3, 1])
 with col_h1:
     st.markdown("""
@@ -238,18 +252,13 @@ if days_left > 0:
 
 st.write("") 
 
-# 2. 氣溫圖表 (已加入數字顯示)
+# 取得 3 天的天氣資料
 weather_df = get_hourly_weather()
-if weather_df is not None:
-    st.markdown('<div class="css-card" style="padding: 0px; overflow: hidden;">', unsafe_allow_html=True)
-    fig = plot_weather_chart(weather_df)
-    st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-    st.markdown('</div>', unsafe_allow_html=True)
 
-# 3. Tab 導航
+# Tab 導航
 tab1, tab2, tab3, tab_money, tab_backup = st.tabs(["第一天", "第二天", "第三天", "分帳", "備案"])
 
-# 4. 卡片渲染函數
+# 卡片渲染函數
 def render_card(item):
     map_url = get_naver_map_link(item.get('k_name'), item['loc'])
     
@@ -289,18 +298,25 @@ def render_card(item):
     </style>
     """, unsafe_allow_html=True)
 
-# 5. 渲染行程
-with tab1:
-    for item in itinerary["12/5 (Day 1)"]["items"]:
+# 共用頁面渲染函數
+def render_page(day_key):
+    # 1. 先顯示當天的氣溫圖
+    day_data = itinerary[day_key]
+    if weather_df is not None:
+        fig = plot_weather_chart(weather_df, day_data['date'])
+        if fig:
+            st.markdown('<div class="css-card" style="padding: 0px; overflow: hidden;">', unsafe_allow_html=True)
+            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+            st.markdown('</div>', unsafe_allow_html=True)
+
+    # 2. 再顯示當天的行程卡片
+    for item in day_data['items']:
         render_card(item)
 
-with tab2:
-    for item in itinerary["12/6 (Day 2)"]["items"]:
-        render_card(item)
-
-with tab3:
-    for item in itinerary["12/7 (Day 3)"]["items"]:
-        render_card(item)
+# 渲染各分頁
+with tab1: render_page("12/5 (Day 1)")
+with tab2: render_page("12/6 (Day 2)")
+with tab3: render_page("12/7 (Day 3)")
 
 with tab_money:
     st.info("請前往 Line 群組記帳")
