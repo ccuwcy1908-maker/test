@@ -24,7 +24,7 @@ st.markdown("""
         font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif; 
     }
     
-    /* 3. 卡片容器 (模仿截圖中的深灰區塊) */
+    /* 3. 卡片容器 */
     div.css-card {
         background-color: #1C1C1E;
         border-radius: 16px;
@@ -33,7 +33,7 @@ st.markdown("""
         border: 1px solid #2C2C2E;
     }
     
-    /* 4. 時間標籤 (右上角的藍色時間) */
+    /* 4. 時間標籤 */
     .time-badge {
         background-color: rgba(10, 132, 255, 0.15);
         color: #0A84FF !important;
@@ -57,13 +57,13 @@ st.markdown("""
     
     /* 6. 描述文字 */
     .card-desc {
-        color: #8E8E93 !important; /* iOS 灰色 */
+        color: #8E8E93 !important; 
         font-size: 14px;
         margin-bottom: 20px;
         line-height: 1.4;
     }
     
-    /* 7. 交通資訊 (左下角) */
+    /* 7. 交通資訊 */
     .transport-info {
         color: #8E8E93 !important;
         font-size: 13px;
@@ -72,13 +72,12 @@ st.markdown("""
         gap: 6px;
     }
 
-    /* 8. 按鈕樣式 (右下角藍色按鈕) */
-    /* 由於 Streamlit 按鈕很難完全移動位置，我們透過 CSS 強制美化 */
+    /* 8. 按鈕樣式 */
     div.stButton > button, a[data-testid="stLinkButton"] {
         background-color: #0A84FF !important;
         color: white !important;
         border: none;
-        border-radius: 20px; /* 更圓一點 */
+        border-radius: 20px;
         font-weight: 600;
         font-size: 14px;
         padding: 8px 16px;
@@ -86,7 +85,7 @@ st.markdown("""
         min-height: 36px;
     }
     
-    /* 9. Tab 分頁 (模擬底部導航的視覺感，雖然在上面) */
+    /* 9. Tab 分頁 */
     .stTabs [data-baseweb="tab-list"] { 
         background-color: #000000; 
         padding-bottom: 10px;
@@ -99,7 +98,7 @@ st.markdown("""
         font-size: 14px;
     }
     .stTabs [data-baseweb="tab"][aria-selected="true"] {
-        color: #0A84FF !important; /* 選中變藍色 */
+        color: #0A84FF !important;
         font-weight: bold;
     }
     
@@ -118,7 +117,6 @@ st.markdown("""
 def get_naver_map_link(k_name, name):
     query = k_name if k_name else name
     encoded_query = urllib.parse.quote(query)
-    # 使用 Naver Map 手機版連結
     return f"https://m.map.naver.com/search2/search.naver?query={encoded_query}"
 
 @st.cache_data(ttl=3600)
@@ -141,28 +139,40 @@ def plot_weather_chart(df):
     
     fig = go.Figure()
     fig.add_trace(go.Scatter(
-        x=day_df['time'], y=day_df['temp'],
-        mode='lines',
-        line=dict(color='#0A84FF', width=3), # iOS Blue
+        x=day_df['time'], 
+        y=day_df['temp'],
+        mode='lines+text', # 加入 text 模式
+        text=[f"{t:.0f}°" for t in day_df['temp']], # 顯示數值 (整數 + 度)
+        textposition="top center", # 數字顯示在線條上方
+        textfont=dict(color='white', size=12, family="Arial"), # 白色字體
+        line=dict(color='#0A84FF', width=3), 
         fill='tozeroy',
-        fillcolor='rgba(10, 132, 255, 0.1)', # 藍色漸層
+        fillcolor='rgba(10, 132, 255, 0.1)', 
         hoverinfo='y'
     ))
 
+    # 計算 Y 軸範圍，確保文字不會被切掉
+    min_temp = day_df['temp'].min()
+    max_temp = day_df['temp'].max()
+
     fig.update_layout(
         title=dict(text="🌤 12-05 氣溫走勢", font=dict(color="white", size=14)),
-        paper_bgcolor='#1C1C1E', # 卡片背景色
+        paper_bgcolor='#1C1C1E', 
         plot_bgcolor='#1C1C1E',
-        margin=dict(l=20, r=20, t=40, b=20),
-        height=180,
+        margin=dict(l=20, r=20, t=50, b=20), # 上方留白多一點給文字
+        height=200,
         showlegend=False,
         xaxis=dict(
             showgrid=False, 
-            tickformat='%H:00', 
+            tickformat='%H', # 只顯示小時
             tickfont=dict(color='#8E8E93', size=10),
-            dtick=10800000.0 # 每3小時
+            dtick=10800000.0 # 每3小時顯示一次刻度
         ),
-        yaxis=dict(showgrid=False, visible=False, range=[day_df['temp'].min()-2, day_df['temp'].max()+5])
+        yaxis=dict(
+            showgrid=False, 
+            visible=False, 
+            range=[min_temp - 2, max_temp + 5] # 預留上方空間給文字
+        )
     )
     return fig
 
@@ -210,7 +220,7 @@ itinerary = {
 # 5. App 主介面邏輯
 # ==========================================
 
-# 1. Header (模仿截圖的大標題)
+# 1. Header
 col_h1, col_h2 = st.columns([3, 1])
 with col_h1:
     st.markdown("""
@@ -220,19 +230,17 @@ with col_h1:
     </div>
     """, unsafe_allow_html=True)
 
-# 倒數計時
 today = datetime.now()
 trip_start = datetime(2025, 12, 5)
 days_left = (trip_start - today).days
 if days_left > 0:
     st.markdown(f"<p style='color:#FF453A !important; font-weight:600; font-size: 14px; margin-top: -10px;'>🚀 距離出發還有 {days_left} 天</p>", unsafe_allow_html=True)
 
-st.write("") # Spacer
+st.write("") 
 
-# 2. 氣溫圖表 (固定顯示 Day 1 或當天)
+# 2. 氣溫圖表 (已加入數字顯示)
 weather_df = get_hourly_weather()
 if weather_df is not None:
-    # 為了達到圓角卡片效果，我們把 Plotly 背景設為透明，然後外面包一層 div
     st.markdown('<div class="css-card" style="padding: 0px; overflow: hidden;">', unsafe_allow_html=True)
     fig = plot_weather_chart(weather_df)
     st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
@@ -241,11 +249,10 @@ if weather_df is not None:
 # 3. Tab 導航
 tab1, tab2, tab3, tab_money, tab_backup = st.tabs(["第一天", "第二天", "第三天", "分帳", "備案"])
 
-# 4. 卡片渲染函數 (核心 UI)
+# 4. 卡片渲染函數
 def render_card(item):
     map_url = get_naver_map_link(item.get('k_name'), item['loc'])
     
-    # HTML 結構模擬截圖
     st.markdown(f"""
     <div class="css-card">
         <div style="display: flex; justify-content: space-between; align-items: start;">
@@ -264,31 +271,18 @@ def render_card(item):
                 <span>🚇</span>
                 <span>{item['transport']}</span>
             </div>
-            <!-- 按鈕位置，Streamlit 的按鈕無法直接塞進 HTML，我們用 Columns 解決 -->
         </div>
     </div>
     """, unsafe_allow_html=True)
     
-    # 為了讓按鈕出現在卡片右下角，我們使用一點排版技巧
-    # 注意：在 Streamlit 純 HTML 中很難放 Python 按鈕，
-    # 這裡我們使用視覺上的 trick：在卡片下方緊接著放按鈕，透過 CSS 往上拉，或者把按鈕放在卡片結構外但視覺上像在裡面。
-    # 
-    # 最穩定的做法：
-    # 上面的 HTML 負責顯示資訊，下方用 st.columns 放置按鈕 (如截圖中的導航)
-    
-    # 這裡我們用一個特殊的排版來模擬截圖中按鈕在卡片內的感覺
-    # 因為 st.link_button 不能嵌在 markdown 裡，我們將卡片拆成兩部分，或把按鈕獨立出來
-    
-    # 修正方案：將按鈕獨立顯示在卡片下方，但透過 CSS 調整間距
     col_spacer, col_btn = st.columns([2, 1])
     with col_btn:
         st.link_button("✈️ 導航", map_url)
     
-    # 用 CSS 把按鈕往上推，讓它看起來在卡片裡 (Optional, 視需求微調)
     st.markdown("""
     <style>
     div[data-testid="column"]:nth-of-type(2) button {
-        margin-top: -70px; /* 強制往上移 */
+        margin-top: -70px;
         position: relative;
         z-index: 10;
     }
@@ -310,7 +304,7 @@ with tab3:
 
 with tab_money:
     st.info("請前往 Line 群組記帳")
-    st.link_button("🚀 開啟 Line 分帳", "https://line.me")
+    st.link_button("🚀 開啟 Line 分帳", "https://liff.line.me/1655320992-Y8GowEpw/g/pEHGMZAzu5UAyZXX4F268P")
 
 with tab_backup:
     st.markdown('<div class="css-card"><div class="card-title">☔️ Coex 星空圖書館</div><div class="card-desc">室內雨天備案。</div></div>', unsafe_allow_html=True)
