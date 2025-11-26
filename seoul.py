@@ -11,131 +11,156 @@ import urllib.parse
 st.set_page_config(page_title="2025 首爾行", page_icon="🇰🇷", layout="centered")
 
 # ==========================================
-# 2. iOS App 風格 CSS (針對導航欄大改)
+# 2. iOS 究極風格 CSS (底部導航 + Apple Fonts)
 # ==========================================
 st.markdown("""
     <style>
-    /* 1. 全局背景：純黑 */
+    /* ----------------------------------------------------
+       1. Apple 系統字體 (San Francisco) 強制套用
+       ---------------------------------------------------- */
+    * {
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif !important;
+    }
+    
+    /* 全局背景：純黑 */
     .stApp { background-color: #000000 !important; }
     
-    /* 2. 字體顏色：全白 */
-    h1, h2, h3, h4, p, span, div, label { 
-        color: #FFFFFF !important; 
-        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif; 
-    }
+    /* 文字顏色：全白 */
+    h1, h2, h3, h4, p, span, div, label { color: #FFFFFF !important; }
+
+    /* ----------------------------------------------------
+       2. 底部懸浮導航欄 (Bottom Navigation Bar)
+       這是最關鍵的 CSS Hack，把 Tab List 搬到下面
+       ---------------------------------------------------- */
     
-    /* 3. --- 核心：iOS 風格導航欄 (Tab Bar) --- */
-    
-    /* 導航欄容器 */
+    /* 定位 Tab 容器 */
     .stTabs [data-baseweb="tab-list"] {
-        background-color: #1C1C1E; /* 深灰底色 */
-        border-radius: 16px;       /* 圓角 */
-        padding: 8px 5px;
-        gap: 5px;
-        border: 1px solid #2C2C2E;
-        /* 固定在視覺中心，雖然不能固定在底部，但這樣長得最像 */
+        position: fixed;        /* 固定位置 */
+        bottom: 20px;           /* 距離底部 20px (懸浮感) */
+        left: 50%;              /* 水平置中 */
+        transform: translateX(-50%);
+        width: 95%;             /* 寬度 */
+        max-width: 400px;       /* 電腦版不要太寬 */
+        background-color: rgba(28, 28, 30, 0.85); /* 深灰半透明 */
+        backdrop-filter: blur(20px);             /* iOS 毛玻璃特效 */
+        -webkit-backdrop-filter: blur(20px);
+        border-radius: 30px;    /* 膠囊形狀 */
+        padding: 5px 5px;
+        z-index: 9999;          /* 確保在最上層 */
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+        gap: 0px;
     }
 
-    /* 單個分頁按鈕 */
+    /* Tab 按鈕樣式 */
     .stTabs [data-baseweb="tab"] {
         height: auto;
-        white-space: pre-wrap !important; /* 關鍵！強制讓 \n 換行，達成圖示在上文字在下 */
         background-color: transparent;
         border: none;
         color: #8E8E93 !important; /* 未選中：灰色 */
-        font-size: 12px;           /* 文字小一點 */
-        font-weight: 500;
-        border-radius: 8px;
-        flex: 1;                   /* 平均分配寬度 */
-        padding: 8px 0px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;    /* 垂直排列 */
+        align-items: center;
+        justify-content: center;
+        padding: 10px 0;
+        gap: 2px;
     }
     
-    /* 選中的分頁 */
-    .stTabs [data-baseweb="tab"][aria-selected="true"] {
-        color: #0A84FF !important; /* 選中：iOS 藍 */
-        background-color: rgba(10, 132, 255, 0.1); /* 微弱的藍色背景 */
-    }
-    
-    /* 移除 Streamlit 預設的紅色底線 */
-    .stTabs [data-baseweb="tab-highlight"] {
-        display: none;
-    }
-
-    /* 調整 Emoji 圖示大小 (透過字體放大) */
+    /* Tab 按鈕文字大小 */
     .stTabs [data-baseweb="tab"] p {
-        font-size: 20px; /* 圖示大一點 */
-        margin-bottom: 5px;
-        line-height: 1.2;
+        font-size: 10px;       /* 說明文字極小 */
+        font-weight: 500;
+        margin: 0;
+    }
+
+    /* 選中的 Tab */
+    .stTabs [data-baseweb="tab"][aria-selected="true"] {
+        color: #0A84FF !important; /* iOS Blue */
+        background-color: rgba(255, 255, 255, 0.1); /* 微亮背景 */
+        border-radius: 20px;
     }
     
-    /* ------------------------------------- */
+    /* 隱藏紅色底線 */
+    .stTabs [data-baseweb="tab-highlight"] { display: none; }
 
-    /* 4. 卡片風格 */
+    /* ----------------------------------------------------
+       3. 內容區塊優化 (防止被底部導航擋住)
+       ---------------------------------------------------- */
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 120px !important; /* 底部留白給導航欄 */
+    }
+
+    /* ----------------------------------------------------
+       4. UI 元件樣式
+       ---------------------------------------------------- */
+    /* 卡片 */
     div.css-card {
         background-color: #1C1C1E;
         border-radius: 16px;
-        padding: 20px;
-        margin-bottom: 16px;
-        border: 1px solid #2C2C2E;
+        padding: 16px;
+        margin-bottom: 12px;
+        border: 0.5px solid #2C2C2E;
     }
     
-    /* 5. 時間標籤 */
+    /* 時間標籤 */
     .time-badge {
         background-color: rgba(10, 132, 255, 0.15);
         color: #0A84FF !important;
-        padding: 6px 12px;
-        border-radius: 8px;
-        font-weight: bold;
-        font-size: 14px;
+        padding: 4px 10px;
+        border-radius: 50px;
+        font-weight: 600;
+        font-size: 13px;
         display: inline-block;
         float: right;
     }
     
-    /* 6. 標題與圖示 */
+    /* 標題 */
     .card-title {
-        font-size: 18px;
-        font-weight: 700;
-        margin-bottom: 8px;
+        font-size: 17px;
+        font-weight: 600;
+        margin-bottom: 4px;
         display: flex;
         align-items: center;
         gap: 8px;
+        letter-spacing: -0.5px; /* iOS Tight Tracking */
     }
     
-    /* 7. 描述文字 */
+    /* 描述 */
     .card-desc {
         color: #8E8E93 !important; 
         font-size: 14px;
-        margin-bottom: 20px;
+        margin-bottom: 15px;
         line-height: 1.4;
     }
     
-    /* 8. 交通資訊 */
+    /* 交通 */
     .transport-info {
-        color: #8E8E93 !important;
+        color: #98989D !important;
         font-size: 13px;
         display: flex;
         align-items: center;
         gap: 6px;
+        font-weight: 400;
     }
 
-    /* 9. 按鈕樣式 */
+    /* 按鈕 (Naver Green) */
     div.stButton > button, a[data-testid="stLinkButton"] {
-        background-color: #0A84FF !important;
+        background-color: #03C75A !important;
         color: white !important;
         border: none;
-        border-radius: 20px;
+        border-radius: 14px;
         font-weight: 600;
         font-size: 14px;
         padding: 8px 16px;
-        height: auto;
-        min-height: 36px;
+        height: 38px;
+        min-height: 38px;
     }
     
     /* 隱藏 Plotly 工具列 */
     .modebar { display: none !important; }
     
-    /* 調整頂部間距 */
-    .block-container { padding-top: 1rem; padding-bottom: 3rem; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -176,8 +201,8 @@ def plot_weather_chart(df, target_date_str):
         mode='lines+text', 
         text=[f"{t:.0f}°" for t in day_df['temp']], 
         textposition="top center", 
-        textfont=dict(color='white', size=12, family="Arial"),
-        line=dict(color='#0A84FF', width=3), 
+        textfont=dict(color='white', size=12, family="-apple-system"), # 使用 Apple 字體
+        line=dict(color='#0A84FF', width=2), 
         fill='tozeroy',
         fillcolor='rgba(10, 132, 255, 0.1)', 
         hoverinfo='y'
@@ -187,13 +212,13 @@ def plot_weather_chart(df, target_date_str):
     max_temp = day_df['temp'].max()
 
     fig.update_layout(
-        title=dict(text=f"🌤 {target_date.strftime('%m-%d')} 氣溫走勢", font=dict(color="white", size=14)),
+        title=dict(text=f"🌤 {target_date.strftime('%m-%d')} 氣溫走勢", font=dict(color="white", size=15, family="-apple-system")),
         paper_bgcolor='#1C1C1E', 
         plot_bgcolor='#1C1C1E',
-        margin=dict(l=20, r=20, t=50, b=20),
-        height=200,
+        margin=dict(l=15, r=15, t=40, b=15),
+        height=180,
         showlegend=False,
-        xaxis=dict(showgrid=False, tickformat='%H', tickfont=dict(color='#8E8E93', size=10), dtick=10800000.0),
+        xaxis=dict(showgrid=False, tickformat='%H', tickfont=dict(color='#8E8E93', size=11), dtick=10800000.0),
         yaxis=dict(showgrid=False, visible=False, range=[min_temp - 2, max_temp + 5])
     )
     return fig
@@ -233,36 +258,37 @@ itinerary = {
 # 5. App 主介面邏輯
 # ==========================================
 
-# 標題與倒數
+# 標題
 st.markdown("""
-<div style="margin-top: 0px; margin-bottom: 10px;">
-    <span style="font-size: 32px; font-weight: 800; color: white;">2025 首爾行</span>
-    <span style="font-size: 24px;">🇰🇷</span>
+<div style="margin-top: 0px; margin-bottom: 5px;">
+    <span style="font-size: 34px; font-weight: 800; color: white; letter-spacing: -0.5px;">2025 首爾行</span>
+    <span style="font-size: 28px;">🇰🇷</span>
 </div>
 """, unsafe_allow_html=True)
 
+# 倒數
 today = datetime.now()
 trip_start = datetime(2025, 12, 5)
 days_left = (trip_start - today).days
 if days_left > 0:
-    st.markdown(f"<p style='color:#FF453A !important; font-weight:600; font-size: 14px; margin-top: -10px; margin-bottom: 20px;'>🚀 距離出發還有 {days_left} 天</p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color:#FF453A !important; font-weight:600; font-size: 15px; margin-top: -10px; margin-bottom: 25px;'>🚀 距離出發還有 {days_left} 天</p>", unsafe_allow_html=True)
 
-# 抓取天氣資料
+# 天氣
 weather_df = get_hourly_weather()
 
 # ==========================================
-# 關鍵修改：Tab 導航欄 (模擬底部導航樣式)
+# 底部導航欄設定 (重點！)
 # ==========================================
-# 使用 \n 換行符號，搭配 CSS 的 pre-wrap，實現「圖示在上、文字在下」
+# 使用 emoji + \n + 文字 來模擬 App Icon
 tab1, tab2, tab3, tab_money, tab_backup = st.tabs([
-    "✈️\n第一天", 
-    "🗺️\n第二天", 
-    "📅\n第三天", 
+    "✈️\nDay 1", 
+    "🗺️\nDay 2", 
+    "📅\nDay 3", 
     "💰\n分帳", 
     "☂️\n備案"
 ])
 
-# 卡片渲染函數
+# 卡片渲染
 def render_card(item):
     map_url = get_naver_map_link(item.get('k_name'), item['loc'])
     
@@ -278,7 +304,7 @@ def render_card(item):
         <div class="card-desc">
             {item['desc']}
         </div>
-        <div style="height: 1px; background-color: #333; margin-bottom: 15px;"></div>
+        <div style="height: 1px; background-color: #333; margin-bottom: 12px;"></div>
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <div class="transport-info">
                 <span>🚇</span>
@@ -290,19 +316,21 @@ def render_card(item):
     
     col_spacer, col_btn = st.columns([2, 1])
     with col_btn:
-        st.link_button("✈️ 導航", map_url)
+        st.link_button("Naver Map", map_url)
     
+    # 調整按鈕位置
     st.markdown("""
     <style>
     div[data-testid="column"]:nth-of-type(2) button {
-        margin-top: -70px;
+        margin-top: -65px;
         position: relative;
         z-index: 10;
+        font-size: 13px !important;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# 共用頁面渲染函數
+# 頁面渲染
 def render_page(day_key):
     day_data = itinerary[day_key]
     if weather_df is not None:
@@ -315,15 +343,15 @@ def render_page(day_key):
     for item in day_data['items']:
         render_card(item)
 
-# 渲染各分頁
+# 內容呈現
 with tab1: render_page("12/5 (Day 1)")
 with tab2: render_page("12/6 (Day 2)")
 with tab3: render_page("12/7 (Day 3)")
 
 with tab_money:
     st.markdown("<br>", unsafe_allow_html=True)
-    st.info("請前往 Line 群組記帳")
-    st.link_button("🚀 開啟 Line 分帳", "https://liff.line.me/1655320992-Y8GowEpw/g/pEHGMZAzu5UAyZXX4F268P")
+    st.info("💡 點擊下方開啟 Line 群組記帳")
+    st.link_button("Line 分帳", "https://liff.line.me/1655320992-Y8GowEpw/g/pEHGMZAzu5UAyZXX4F268P")
 
 with tab_backup:
     st.markdown('<div class="css-card"><div class="card-title">☔️ Coex 星空圖書館</div><div class="card-desc">室內雨天備案。</div></div>', unsafe_allow_html=True)
