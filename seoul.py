@@ -4,19 +4,15 @@ import requests
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime
+import urllib.parse # 用來處理網址編碼
 
 # ==========================================
-# 1. 核心設定 & 成員名單
+# 1. 核心設定
 # ==========================================
 st.set_page_config(page_title="首爾行 2025", page_icon="🇰🇷", layout="centered")
 
-MEMBERS = ["ChiYeh", "Olivia", "Yue", "May"]
-
-if 'expenses' not in st.session_state:
-    st.session_state.expenses = []
-
 # ==========================================
-# 2. 極簡深色 CSS (無圖優化版)
+# 2. 極簡深色 CSS
 # ==========================================
 st.markdown("""
     <style>
@@ -29,7 +25,7 @@ st.markdown("""
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
     }
     
-    /* 卡片風格：深灰背景，無邊框 */
+    /* 卡片風格 */
     div[data-testid="stExpander"], div.stContainer {
         background-color: #1C1C1E;
         border-radius: 12px;
@@ -56,22 +52,18 @@ st.markdown("""
         font-weight: bold;
     }
     
-    /* 輸入框美化 */
-    .stTextInput input, .stNumberInput input, .stSelectbox div, .stMultiSelect div {
-        background-color: #2C2C2E !important;
-        color: white !important;
-        border-radius: 8px;
-        border: none;
-    }
-    
-    /* 按鈕美化：iOS 藍色 */
-    div.stButton > button {
-        background-color: #0A84FF !important;
+    /* 按鈕美化：Naver 綠色 */
+    div.stButton > button, a[data-testid="stLinkButton"] {
+        background-color: #03C75A !important; /* 改成 Naver 的品牌綠色 */
         color: white !important;
         border: none;
         border-radius: 8px;
         font-weight: 600;
-        height: 45px;
+        height: 50px;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
     
     /* 隱藏 Plotly 工具列 */
@@ -86,8 +78,13 @@ st.markdown("""
 # 3. 功能函式庫
 # ==========================================
 
-def get_apple_maps_link(lat, lon, name):
-    return f"https://maps.apple.com/?q={name}&ll={lat},{lon}"
+# 產生 Naver Map 搜尋連結
+def get_naver_map_link(k_name, name):
+    # 優先使用韓文名稱搜尋，準確度最高
+    query = k_name if k_name else name
+    encoded_query = urllib.parse.quote(query)
+    # Naver Map 網頁版搜尋連結
+    return f"https://map.naver.com/p/search/{encoded_query}"
 
 @st.cache_data(ttl=3600)
 def get_hourly_weather():
@@ -115,9 +112,9 @@ def plot_weather_chart(df, target_date_str):
     fig.add_trace(go.Scatter(
         x=day_df['time'], y=day_df['temp'],
         mode='lines+text',
-        line=dict(color='#0A84FF', width=3),
+        line=dict(color='#03C75A', width=3), # 線條也改成 Naver 綠
         fill='tozeroy',
-        fillcolor='rgba(10, 132, 255, 0.1)',
+        fillcolor='rgba(3, 199, 90, 0.1)',
         text=[f"{t:.0f}°" for t in day_df['temp']],
         textposition="top center",
         textfont=dict(color='white', size=12)
@@ -136,7 +133,7 @@ def plot_weather_chart(df, target_date_str):
     return fig
 
 # ==========================================
-# 4. 行程資料 (純文字版)
+# 4. 行程資料 (新增 k_name 韓文名稱)
 # ==========================================
 itinerary = {
     "12/5 (Day 1)": {
@@ -145,17 +142,17 @@ itinerary = {
             {
                 "time": "15:00", "title": "✈️ 抵達/Check-in", 
                 "desc": "機場快線 AREX 直達弘大，先去飯店放行李", 
-                "transport": "AREX 機場快線", "lat": 37.5575, "lon": 126.9245, "loc": "Hongik Univ. Station"
+                "transport": "AREX 機場快線", "k_name": "홍대입구역", "loc": "Hongik Univ. Station"
             },
             {
                 "time": "18:00", "title": "🍽 小豬存錢筒", 
                 "desc": "弘大必吃石頭烤肉，石頭上烤的豬五花", 
-                "transport": "步行前往", "lat": 37.5559, "lon": 126.9230, "loc": "Piggy Bank Stone Grill"
+                "transport": "步行前往", "k_name": "돼지저금통", "loc": "Piggy Bank Stone Grill"
             },
             {
                 "time": "20:00", "title": "🛍 弘大商圈", 
                 "desc": "街頭表演、美妝、買衣服、拍貼機", 
-                "transport": "步行", "lat": 37.5563, "lon": 126.9225, "loc": "Hongdae Street"
+                "transport": "步行", "k_name": "홍대거리", "loc": "Hongdae Street"
             }
         ]
     },
@@ -165,27 +162,27 @@ itinerary = {
             {
                 "time": "11:00", "title": "🥩 馬場洞韓牛", 
                 "desc": "頂級 1++ 韓牛，入口即化 (推薦龍門家)", 
-                "transport": "5號線 馬場站 2號出口", "lat": 37.5670, "lon": 127.0420, "loc": "Majang Meat Market"
+                "transport": "5號線 馬場站 2號出口", "k_name": "마장축산물시장", "loc": "Majang Meat Market"
             },
             {
                 "time": "14:00", "title": "📷 證件照拍攝", 
                 "desc": "韓式精修證件照，記得帶妝", 
-                "transport": "地鐵移動", "lat": 37.5560, "lon": 126.9240, "loc": "Photostudio"
+                "transport": "地鐵移動", "k_name": "사진관", "loc": "Photostudio" # 通用搜尋
             },
             {
                 "time": "15:30", "title": "🛍 龍山 I’Park", 
                 "desc": "超大購物中心，有龍貓展、相機街", 
-                "transport": "1號線 龍山站", "lat": 37.5298, "lon": 126.9647, "loc": "I'Park Mall"
+                "transport": "1號線 龍山站", "k_name": "용산 아이파크몰", "loc": "I'Park Mall"
             },
             {
                 "time": "18:30", "title": "🍲 一隻雞 (晚餐)", 
                 "desc": "陳玉華或孔陵，蒜味濃郁雞湯", 
-                "transport": "4號線 東大門站", "lat": 37.5709, "lon": 127.0062, "loc": "Jin Ok-hwa Halmae"
+                "transport": "4號線 東大門站", "k_name": "진옥화할매원조닭한마리", "loc": "Jin Ok-hwa Halmae"
             },
             {
                 "time": "20:30", "title": "🍸 梨泰院酒吧", 
                 "desc": "Fountain / Thursday Party，異國風情夜生活", 
-                "transport": "6號線 梨泰院站", "lat": 37.5340, "lon": 126.9940, "loc": "Itaewon Street"
+                "transport": "6號線 梨泰院站", "k_name": "이태원거리", "loc": "Itaewon Street"
             }
         ]
     },
@@ -195,26 +192,26 @@ itinerary = {
             {
                 "time": "10:30", "title": "🐷 金豬食堂", 
                 "desc": "米其林推薦，最好吃的烤豬頸肉 (需排隊)", 
-                "transport": "3號線 藥水站", "lat": 37.5590, "lon": 127.0100, "loc": "Gold Pig Dining"
+                "transport": "3號線 藥水站", "k_name": "금돼지식당", "loc": "Gold Pig Dining"
             },
             {
                 "time": "13:30", "title": "🛍 明洞商圈", 
                 "desc": "Olive Young 旗艦店、明洞聖堂", 
-                "transport": "4號線 明洞站", "lat": 37.5630, "lon": 126.9840, "loc": "Myeongdong Street"
+                "transport": "4號線 明洞站", "k_name": "명동거리", "loc": "Myeongdong Street"
             },
             {
                 "time": "18:00", "title": "🍽 無垢屋", 
                 "desc": "清淡牛肉湯 (Gomguk)，舒緩腸胃", 
-                "transport": "1號線 市廳站", "lat": 37.5650, "lon": 126.9790, "loc": "Muguok"
+                "transport": "1號線 市廳站", "k_name": "무구옥", "loc": "Muguok"
             }
         ]
     }
 }
 
 backup_plans = [
-    {"name": "Coex 星空圖書館", "desc": "室內雨天備案，絕美書牆"},
-    {"name": "漢南洞", "desc": "設計師品牌聚集地"},
-    {"name": "樂天超市 (首爾站)", "desc": "伴手禮採買"}
+    {"name": "Coex 星空圖書館", "desc": "室內雨天備案，絕美書牆", "k_name": "별마당도서관"},
+    {"name": "漢南洞", "desc": "設計師品牌聚集地", "k_name": "한남동카페거리"},
+    {"name": "樂天超市 (首爾站)", "desc": "伴手禮採買", "k_name": "롯데마트 서울역점"}
 ]
 
 # ==========================================
@@ -228,7 +225,7 @@ trip_start = datetime(2025, 12, 5)
 days_left = (trip_start - today).days
 
 if days_left > 0:
-    st.markdown(f"<p style='color:#0A84FF !important; font-weight:bold;'>🚀 距離出發還有 {days_left} 天</p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color:#03C75A !important; font-weight:bold;'>🚀 距離出發還有 {days_left} 天</p>", unsafe_allow_html=True)
 
 # 抓取天氣資料
 weather_df = get_hourly_weather()
@@ -238,7 +235,7 @@ st.markdown("---")
 # 建立分頁
 tab1, tab2, tab3, tab_money, tab_backup = st.tabs(["Day 1", "Day 2", "Day 3", "💰 分帳", "備案"])
 
-# --- 通用渲染函數 (無圖版) ---
+# --- 通用渲染函數 (Naver Map 版) ---
 def render_day_tab(day_key):
     day_data = itinerary[day_key]
     date_str = day_data['date']
@@ -260,68 +257,34 @@ def render_day_tab(day_key):
             
             b1, b2 = st.columns([3, 2])
             b1.markdown(f"🚇 {item['transport']}")
-            map_url = get_apple_maps_link(item['lat'], item['lon'], item['loc'])
-            b2.link_button("📍 導航", map_url, use_container_width=True)
+            
+            # 使用 Naver Map 連結，優先使用韓文名稱搜尋
+            map_url = get_naver_map_link(item.get('k_name'), item['loc'])
+            b2.link_button("📍 Naver Map", map_url, use_container_width=True)
 
 with tab1: render_day_tab("12/5 (Day 1)")
 with tab2: render_day_tab("12/6 (Day 2)")
 with tab3: render_day_tab("12/7 (Day 3)")
 
-# --- 💰 分帳功能 (純台幣版) ---
+# --- 💰 分帳功能 (Line 導流版) ---
 with tab_money:
-    st.subheader("💸 旅費計算機 (TWD)")
+    st.subheader("💸 旅費管理")
+    st.info("點擊下方按鈕前往 Line 群組記帳")
     
-    with st.expander("➕ 新增消費", expanded=True):
-        with st.form("expense_form"):
-            c1, c2 = st.columns(2)
-            item = c1.text_input("項目", placeholder="ex. 烤肉")
-            amount = c2.number_input("金額 (TWD)", min_value=0, step=10)
-            
-            payer = st.selectbox("付款人", MEMBERS)
-            sharers = st.multiselect("分擔人", MEMBERS, default=MEMBERS)
-            
-            if st.form_submit_button("新增款項"):
-                if amount > 0 and sharers:
-                    per_person = amount / len(sharers)
-                    st.session_state.expenses.append({
-                        "項目": item,
-                        "金額": int(amount),
-                        "付款人": payer,
-                        "分擔人": ", ".join(sharers),
-                        "每人": int(per_person)
-                    })
-                    st.success("已新增")
-
-    if st.session_state.expenses:
-        st.markdown("### 🧾 消費明細")
-        df = pd.DataFrame(st.session_state.expenses)
-        
-        # 顯示表格
-        st.dataframe(df[["項目", "金額", "付款人", "分擔人"]], use_container_width=True, hide_index=True)
-        
-        # 總金額
-        total = df["金額"].sum()
-        st.metric("💰 總開銷 (TWD)", f"${total:,}")
-        
-        # 統計圖
-        st.markdown("#### 🏆 誰先墊了多少？")
-        chart_data = df.groupby("付款人")["金額"].sum().reset_index()
-        fig_bar = px.bar(chart_data, x='付款人', y='金額', text_auto=True, color='付款人')
-        fig_bar.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='white'))
-        st.plotly_chart(fig_bar, use_container_width=True)
-
-        if st.button("🗑 清除帳目"):
-            st.session_state.expenses = []
-            st.rerun()
-    else:
-        st.caption("尚未有消費紀錄")
+    st.link_button("🚀 開啟 Line 分帳群組", "https://liff.line.me/1655320992-Y8GowEpw/g/pEHGMZAzu5UAyZXX4F268P")
+    
+    st.caption("建議使用 Splitwise 或 Line 內建分帳功能")
 
 # --- 備案 ---
 with tab_backup:
     for plan in backup_plans:
         st.markdown(f"**📍 {plan['name']}**")
         st.caption(plan['desc'])
+        
+        # 備案也要 Naver Map
+        map_url = get_naver_map_link(plan.get('k_name'), plan['name'])
+        st.link_button("📍 Naver Map", map_url)
         st.divider()
 
 # Footer
-st.caption("2025 Seoul Trip | Pure Text Mode")
+st.caption("2025 Seoul Trip | Naver Map Edition")
